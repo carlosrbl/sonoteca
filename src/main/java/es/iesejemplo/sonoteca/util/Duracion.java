@@ -16,7 +16,9 @@ public class Duracion {
      * @throws IllegalArgumentException si segundosTotales es negativo.
      */
     public Duracion(int segundosTotales) {
-        // TODO: valida que segundosTotales no sea negativo antes de asignarlo.
+        if (segundosTotales < 0) {
+            throw new IllegalArgumentException("El segundo del duracion es negativo");
+        }
         this.segundosTotales = segundosTotales;
     }
 
@@ -29,8 +31,9 @@ public class Duracion {
      *         Los segundos siempre se muestran con dos dígitos.
      */
     public String aTexto() {
-        // TODO: implementar.
-        throw new UnsupportedOperationException("TODO: implementar (unidad 1)");
+        int minutos = getSegundosTotales() / 60;
+        int segundos = getSegundosTotales() % 60;
+        return String.format("%d:%02d", minutos, segundos);
     }
 
     /**
@@ -40,8 +43,11 @@ public class Duracion {
      * @return el objeto Duracion equivalente.
      */
     public static Duracion desdeTexto(String texto) {
-        // TODO: implementar.
-        throw new UnsupportedOperationException("TODO: implementar (unidad 1)");
+        String[] partes = texto.split(":");
+        int minutos = Integer.parseInt(partes[0]);
+        int segundos = Integer.parseInt(partes[1]);
+        int segundosTotales = (minutos * 60) +  segundos;
+        return new Duracion(segundosTotales);
     }
 
     @Override
