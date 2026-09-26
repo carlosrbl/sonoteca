@@ -1,5 +1,7 @@
 package es.iesejemplo.sonoteca.modelo;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -19,6 +21,7 @@ public class Cancion implements Serializable {
 
     private String titulo;
     private int duracionSegundos;
+    @SerializedName("pista")
     private int numeroPista;
 
     // TODO unidad 4: @ManyToOne  @JoinColumn(name = "album_id")

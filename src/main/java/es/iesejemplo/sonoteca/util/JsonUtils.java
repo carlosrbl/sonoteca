@@ -25,24 +25,20 @@ public class JsonUtils {
     // ----- Unidad 1: una canción suelta -----
 
     public static String exportarCancion(Cancion cancion) {
-        // TODO: implementar con Gson (unidad 1, ejercicio 3).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 1, ejercicio 3)");
+        return GSON.toJson(cancion);
     }
 
     public static Cancion importarCancion(String json) {
-        // TODO: implementar con Gson (unidad 1, ejercicio 3).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 1, ejercicio 3)");
+        return GSON.fromJson(json, Cancion.class);
     }
 
     public static String exportarLista(List<Cancion> canciones) {
-        // TODO: implementar con Gson (unidad 1, ejercicio 3).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 1, ejercicio 3)");
+        return GSON.toJson(canciones);
     }
 
     public static List<Cancion> importarLista(String json) {
-        // TODO: implementar con Gson, usando un TypeToken para conservar el tipo genérico
-        // (unidad 1, ejercicio 3).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 1, ejercicio 3)");
+        Type tipoLista = new TypeToken<List<Cancion>>(){}.getType();
+        return GSON.fromJson(json, tipoLista);
     }
 
     // ----- Unidad 2: la biblioteca completa -----
