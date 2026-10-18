@@ -81,73 +81,148 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
 
     @Override
     public List<Genero> listarGeneros() {
-        // TODO: implementar (unidad 2, ejercicio 0).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 0)");
+        return biblioteca.getGeneros();
     }
 
     @Override
     public List<Artista> listarArtistas() {
-        // TODO: implementar (unidad 2, ejercicio 0).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 0)");
+        return biblioteca.getArtistas();
     }
 
     @Override
     public List<Album> listarAlbumes() {
-        // TODO: implementar (unidad 2, ejercicio 0).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 0)");
+        return biblioteca.getAlbumes();
     }
 
     @Override
     public List<Cancion> listarCanciones() {
-        // TODO: implementar (unidad 2, ejercicio 0).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 0)");
+        return biblioteca.getCanciones();
     }
 
     @Override
     public List<Cancion> buscarCanciones(String texto) {
-        // TODO: implementar (unidad 2, ejercicio 0).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 0)");
+        String textoLower = texto.toLowerCase();
+        return biblioteca.getCanciones().stream()
+                .filter(c -> c.getTitulo().toLowerCase().contains(textoLower))
+                .toList();
     }
 
     @Override
     public void altaCancion(Cancion cancion) {
-        // TODO: implementar (unidad 2, ejercicio 0).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 0)");
+        int nuevoIdCancion = biblioteca.getCanciones().stream().mapToInt(Cancion::getId).max().orElse(0) + 1;
+        cancion.setId(nuevoIdCancion);
+
+        if (cancion.getAlbum() != null) {
+            Album albumOriginal = cancion.getAlbum();
+
+            Genero genero = null;
+            if (albumOriginal.getGenero() != null) {
+                genero = obtenerCrearGenero(albumOriginal.getGenero().getNombre());
+            }
+
+            Artista artista = null;
+            if (albumOriginal.getArtista() != null) {
+                artista = obtenerCrearArtista(albumOriginal.getArtista().getNombre(), albumOriginal.getArtista().getNacionalidad());
+            }
+
+            Album album = obtenerCrearAlbum(albumOriginal.getTitulo(), albumOriginal.getAnio(), artista, genero);
+            cancion.setAlbum(album);
+        }
+
+        biblioteca.getCanciones().add(cancion);
     }
 
     @Override
     public void actualizarCancion(Cancion cancion) {
-        // TODO: implementar (unidad 2, ejercicio 0).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 0)");
+        for (int i = 0; i < biblioteca.getCanciones().size(); i++) {
+            if (biblioteca.getCanciones().get(i).getId() == cancion.getId()) {
+                biblioteca.getCanciones().set(i, cancion);
+                break;
+            }
+        }
     }
 
     @Override
     public void eliminarCancion(int idCancion) {
-        // TODO: implementar (unidad 2, ejercicio 0).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 0)");
+        biblioteca.getCanciones().removeIf(c -> c.getId() == idCancion);
     }
 
     @Override
     public List<ListaReproduccion> listarListas() {
-        // TODO: implementar (unidad 2, ejercicio 0).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 0)");
+        return biblioteca.getListasReproduccion();
     }
 
     @Override
     public void altaLista(ListaReproduccion lista) {
-        // TODO: implementar (unidad 2, ejercicio 0).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 0)");
+        int nuevoId = biblioteca.getListasReproduccion().stream().mapToInt(ListaReproduccion::getId).max().orElse(0) + 1;
+        lista.setId(nuevoId);
+        biblioteca.getListasReproduccion().add(lista);
     }
 
     @Override
     public void anyadirCancionALista(int idLista, int idCancion, int posicion) {
-        // TODO: implementar (unidad 2, ejercicio 0).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 0)");
+        ListaReproduccion lista = biblioteca.getListasReproduccion().stream()
+                .filter(l -> l.getId() == idLista).findFirst().orElse(null);
+        Cancion cancion = biblioteca.getCanciones().stream()
+                .filter(c -> c.getId() == idCancion).findFirst().orElse(null);
+
+        if (lista != null && cancion != null) {
+            int indice = posicion - 1;
+            if (indice >= 0 && indice <= lista.getCanciones().size()) {
+                lista.getCanciones().add(indice, cancion);
+            } else {
+                lista.getCanciones().add(cancion);
+            }
+        }
     }
 
     @Override
     public List<Cancion> cancionesDeLista(int idLista) {
-        // TODO: implementar (unidad 2, ejercicio 0).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 0)");
+        ListaReproduccion lista = biblioteca.getListasReproduccion().stream()
+                .filter(l -> l.getId() == idLista).findFirst().orElse(null);
+        if (lista != null) {
+            return lista.getCanciones();
+        }
+        return new java.util.ArrayList<>();
+    }
+
+    private Genero obtenerCrearGenero(String nombre) {
+        if (nombre == null || nombre.isBlank()) return null;
+        for (Genero g : biblioteca.getGeneros()) {
+            if (g.getNombre().equalsIgnoreCase(nombre)) {
+                return g;
+            }
+        }
+        int nuevoId = biblioteca.getGeneros().stream().mapToInt(Genero::getId).max().orElse(0) + 1;
+        Genero nuevoGenero = new Genero(nuevoId, nombre);
+        biblioteca.getGeneros().add(nuevoGenero);
+        return nuevoGenero;
+    }
+
+    private Artista obtenerCrearArtista(String nombre, String nacionalidad) {
+        if (nombre == null || nombre.isBlank()) return null;
+        for (Artista a : biblioteca.getArtistas()) {
+            if (a.getNombre().equalsIgnoreCase(nombre)) {
+                return a;
+            }
+        }
+        int nuevoId = biblioteca.getArtistas().stream().mapToInt(Artista::getId).max().orElse(0) + 1;
+        Artista nuevoArtista = new Artista(nuevoId, nombre, nacionalidad);
+        biblioteca.getArtistas().add(nuevoArtista);
+        return nuevoArtista;
+    }
+
+    private Album obtenerCrearAlbum(String titulo, int anio, Artista artista, Genero genero) {
+        if (titulo == null || titulo.isBlank()) return null;
+        for (Album a : biblioteca.getAlbumes()) {
+            if (a.getTitulo().equalsIgnoreCase(titulo)) {
+                return a;
+            }
+        }
+        int nuevoId = biblioteca.getAlbumes().stream().mapToInt(Album::getId).max().orElse(0) + 1;
+        Album nuevoAlbum = new Album(titulo, anio, artista, genero);
+        nuevoAlbum.setId(nuevoId);
+        biblioteca.getAlbumes().add(nuevoAlbum);
+        return nuevoAlbum;
     }
 }
