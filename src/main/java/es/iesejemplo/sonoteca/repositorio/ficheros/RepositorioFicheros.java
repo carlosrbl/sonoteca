@@ -9,6 +9,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.io.ObjectInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedInputStream;
 
 /**
  * UNIDAD 2 — Persistencia en ficheros.
@@ -136,14 +140,37 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
     // ---------- Ejercicio 3: serializar/deserializar la biblioteca ----------
 
     public void guardarBiblioteca(Biblioteca biblioteca, String rutaFichero) {
-        // TODO: implementar con ObjectOutputStream (unidad 2, ejercicio 3).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 3)");
+        java.nio.file.Path ruta = java.nio.file.Path.of(rutaFichero).toAbsolutePath();
+        System.out.println("Guardando biblioteca en: " + ruta);
+
+        try {
+            if (ruta.getParent() != null && java.nio.file.Files.notExists(ruta.getParent())) {
+                java.nio.file.Files.createDirectories(ruta.getParent());
+            }
+
+            try (ObjectOutputStream salida = new ObjectOutputStream(
+                    new BufferedOutputStream(java.nio.file.Files.newOutputStream(ruta)))) {
+                salida.writeObject(biblioteca);
+            }
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Error al guardar la biblioteca en " + ruta, e);
+        }
     }
 
     public Biblioteca cargarBiblioteca(String rutaFichero) {
-        // TODO: implementar con ObjectInputStream (unidad 2, ejercicio 3).
-        // Si el fichero no existe todavía, devolver "new Biblioteca()" en lugar de fallar.
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 3)");
+        java.nio.file.Path ruta = java.nio.file.Path.of(rutaFichero).toAbsolutePath();
+
+        if (java.nio.file.Files.notExists(ruta)) {
+            return new Biblioteca();
+        }
+
+        try (ObjectInputStream entrada = new ObjectInputStream(
+                new BufferedInputStream(java.nio.file.Files.newInputStream(ruta)))) {
+            return (Biblioteca) entrada.readObject();
+        } catch (ClassNotFoundException | java.io.IOException e) {
+            System.err.println("Error al cargar la biblioteca: " + e.getMessage());
+            return new Biblioteca();
+        }
     }
 
     // ---------- Implementación de RepositorioSonoTeca (Ejercicio 0) ----------
