@@ -79,9 +79,58 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
      * correspondiente (creando también, si hace falta, Artista/Album/Genero).
      * Si el fichero no tiene cabecera ID3v1 válida, devuelve null.
      */
+
+    private static final int TAM_CABECERA = 128;
+
     public Cancion leerCabeceraID3(File ficheroMp3) {
-        // TODO: implementar (unidad 2, ejercicio 2).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 2)");
+        java.nio.file.Path ruta = ficheroMp3.toPath();
+
+        try {
+            if (java.nio.file.Files.size(ruta) < TAM_CABECERA) {
+                return null;
+            }
+
+            byte[] bloque = new byte[TAM_CABECERA];
+
+            try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(ficheroMp3, "r")) {
+                raf.seek(raf.length() - TAM_CABECERA);
+                raf.readFully(bloque);
+            }
+
+            String identificador = campo(bloque, 0, 3);
+            if (!"TAG".equals(identificador)) {
+                return null;
+            }
+
+            String titulo = campo(bloque, 3, 30);
+            String nombreArtista = campo(bloque, 33, 30);
+            String tituloAlbum = campo(bloque, 63, 30);
+            String textoAnio = campo(bloque, 93, 4);
+
+            int codigoGenero = bloque[127] & 0xFF;
+            Genero genero = obtenerCrearGenero("Género " + codigoGenero);
+
+            int anio = 0;
+            if (!textoAnio.isEmpty()) {
+                try {
+                    anio = Integer.parseInt(textoAnio);
+                } catch (NumberFormatException ignored) {}
+            }
+
+            Artista artista = obtenerCrearArtista(nombreArtista, null);
+            Album album = obtenerCrearAlbum(tituloAlbum, anio, artista, genero);
+
+            Cancion cancion = new Cancion();
+            cancion.setTitulo(titulo);
+            cancion.setAlbum(album);
+            cancion.setDuracionSegundos(0);
+
+            return cancion;
+
+        } catch (java.io.IOException e) {
+            System.err.println("Error leyendo ID3v1 de " + ficheroMp3.getName() + ": " + e.getMessage());
+            return null;
+        }
     }
 
     // ---------- Ejercicio 3: serializar/deserializar la biblioteca ----------
@@ -246,5 +295,15 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
         nuevoAlbum.setId(nuevoId);
         biblioteca.getAlbumes().add(nuevoAlbum);
         return nuevoAlbum;
+    }
+
+    /** Extrae un campo de texto ID3v1: ISO-8859-1, recortando espacios y bytes nulos. */
+    private static String campo(byte[] bloque, int desde, int longitud) {
+        String texto = new String(bloque, desde, longitud, java.nio.charset.StandardCharsets.ISO_8859_1);
+        int nulo = texto.indexOf('\0');
+        if (nulo != -1) {
+            texto = texto.substring(0, nulo);
+        }
+        return texto.trim();
     }
 }
