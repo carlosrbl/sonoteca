@@ -5,6 +5,10 @@ import es.iesejemplo.sonoteca.repositorio.RepositorioSonoTeca;
 
 import java.io.File;
 import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.stream.Stream;
+import java.io.IOException;
 
 /**
  * UNIDAD 2 — Persistencia en ficheros.
@@ -46,8 +50,26 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
      *         Si rutaBase no existe o no es un directorio, devuelve una lista vacía.
      */
     public List<File> escanearDirectorio(String rutaBase) {
-        // TODO: implementar (unidad 2, ejercicio 1).
-        throw new UnsupportedOperationException("Funcionalidad no implementada (unidad 2, ejercicio 1)");
+        if (rutaBase == null || rutaBase.isBlank()) {
+            return List.of();
+        }
+
+        Path base = Path.of(rutaBase);
+        if (!Files.isDirectory(base)) {
+            return List.of();
+        }
+
+        try (Stream<Path> rutas = Files.walk(base)) {
+            return rutas
+                    .filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".mp3"))
+                    .sorted()
+                    .map(Path::toFile)
+                    .toList();
+        } catch (IOException e) {
+            System.err.println("Error al escanear el directorio: " + e.getMessage());
+            return List.of();
+        }
     }
 
     // ---------- Ejercicio 2: leer la cabecera ID3v1 ----------
