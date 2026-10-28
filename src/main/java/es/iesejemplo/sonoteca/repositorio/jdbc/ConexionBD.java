@@ -30,8 +30,10 @@ public class ConexionBD {
         String usuario = propiedades.getProperty("bd.usuario");
         String password = propiedades.getProperty("bd.password");
 
-        // TODO: comprueba que url/usuario/password se han leído correctamente y
-        // devuelve la conexión con DriverManager.getConnection(url, usuario, password).
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3, ejercicio 1)");
+        if (url == null || usuario == null) {
+            throw new SQLException("Las propiedades de conexión (url o usuario) no están definidas en config.properties");
+        }
+
+        return DriverManager.getConnection(url, usuario, password);
     }
 }

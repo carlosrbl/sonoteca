@@ -1,0 +1,4 @@
+# Unidad 3 - plantilla de datos de conexión a PostgreSQL
+bd.url=jdbc:postgresql://localhost:5432/sonoteca
+bd.usuario=tu_usuario_aqui
+bd.password=tu_contrasena_aqui
