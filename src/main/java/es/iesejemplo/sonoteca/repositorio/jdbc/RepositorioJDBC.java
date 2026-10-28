@@ -3,6 +3,10 @@ package es.iesejemplo.sonoteca.repositorio.jdbc;
 import es.iesejemplo.sonoteca.modelo.*;
 import es.iesejemplo.sonoteca.repositorio.RepositorioSonoTeca;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
 /**
@@ -20,9 +24,37 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
 
     @Override
     public void altaCancion(Cancion cancion) {
-        // TODO: 1) comprobar/crear el género; 2) comprobar/crear el artista;
-        //       3) comprobar/crear el álbum; 4) insertar la canción.
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3, ejercicio 2)");
+        String sqlCancion = "INSERT INTO canciones (titulo, duracion_segundos, numero_pista, album_id) VALUES (?, ?, ?, ?)";
+
+        try (Connection conexion = ConexionBD.obtenerConexion()) {
+            conexion.setAutoCommit(false);
+            try {
+                int generoId = obtenerOCrearGenero(conexion, cancion.getAlbum().getGenero().getNombre());
+
+                int artistaId = obtenerOCrearArtista(conexion, cancion.getAlbum().getArtista().getNombre(),
+                        cancion.getAlbum().getArtista().getNacionalidad());
+
+                int albumId = obtenerOCrearAlbum(conexion, cancion.getAlbum(), artistaId, generoId);
+
+                try (PreparedStatement ps = conexion.prepareStatement(sqlCancion)) {
+                    ps.setString(1, cancion.getTitulo());
+                    ps.setInt(2, cancion.getDuracionSegundos());
+                    ps.setInt(3, cancion.getNumeroPista());
+                    ps.setInt(4, albumId);
+                    ps.executeUpdate();
+                }
+
+                conexion.commit();
+            } catch (SQLException e) {
+                conexion.rollback();
+                e.printStackTrace();
+                throw new RuntimeException("Error al dar de alta la canción en cascada", e);
+            } finally {
+                conexion.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al conectar con la base de datos", e);
+        }
     }
 
     // ---------- Ejercicio 3: listar con datos relacionados ----------
@@ -120,5 +152,84 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
     @Override
     public List<Cancion> cancionesDeLista(int idLista) {
         throw new UnsupportedOperationException("TODO: implementar (unidad 3)");
+    }
+
+    private int obtenerOCrearGenero(Connection conexion, String nombre) throws SQLException {
+        String sqlSelect = "SELECT id FROM generos WHERE LOWER(nombre) = LOWER(?)";
+        String sqlInsert = "INSERT INTO generos (nombre) VALUES (?) RETURNING id";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sqlSelect)) {
+            ps.setString(1, nombre);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
+        }
+
+        try (PreparedStatement ps = conexion.prepareStatement(sqlInsert)) {
+            ps.setString(1, nombre);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt("id");
+            }
+        }
+    }
+
+    private int obtenerOCrearArtista(Connection conexion, String nombre, String nacionalidad) throws SQLException {
+        String sqlSelect = "SELECT id FROM artistas WHERE LOWER(nombre) = LOWER(?)";
+        String sqlInsert = "INSERT INTO artistas (nombre, nacionalidad) VALUES (?, ?) RETURNING id";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sqlSelect)) {
+            ps.setString(1, nombre);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
+        }
+
+        try (PreparedStatement ps = conexion.prepareStatement(sqlInsert)) {
+            ps.setString(1, nombre);
+            if (nacionalidad != null && !nacionalidad.isEmpty()) {
+                ps.setString(2, nacionalidad);
+            } else {
+                ps.setNull(2, java.sql.Types.VARCHAR);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt("id");
+            }
+        }
+    }
+
+    private int obtenerOCrearAlbum(Connection conexion, Album album, int artistaId, int generoId) throws SQLException {
+        String sqlSelect = "SELECT id FROM albumes WHERE LOWER(titulo) = LOWER(?) AND artista_id = ?";
+        String sqlInsert = "INSERT INTO albumes (titulo, anio, artista_id, genero_id) VALUES (?, ?, ?, ?) RETURNING id";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sqlSelect)) {
+            ps.setString(1, album.getTitulo());
+            ps.setInt(2, artistaId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
+        }
+
+        try (PreparedStatement ps = conexion.prepareStatement(sqlInsert)) {
+            ps.setString(1, album.getTitulo());
+            if (album.getAnio() > 0) {
+                ps.setInt(2, album.getAnio());
+            } else {
+                ps.setNull(2, java.sql.Types.INTEGER);
+            }
+            ps.setInt(3, artistaId);
+            ps.setInt(4, generoId);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt("id");
+            }
+        }
     }
 }
