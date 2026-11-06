@@ -8,6 +8,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.sql.Types;
+import java.util.ArrayList;
 
 /**
  * UNIDAD 3 — Persistencia en base de datos relacional con JDBC.
@@ -59,11 +61,67 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
 
     // ---------- Ejercicio 3: listar con datos relacionados ----------
 
+    private Cancion mapearCancion(ResultSet rs) throws SQLException {
+        Genero genero = new Genero();
+        genero.setId(rs.getInt("genero_id"));
+        genero.setNombre(rs.getString("nombre_genero"));
+
+        Artista artista = new Artista();
+        artista.setId(rs.getInt("artista_id"));
+        artista.setNombre(rs.getString("nombre_artista"));
+        artista.setNacionalidad(rs.getString("nacionalidad"));
+
+        Album album = new Album();
+        album.setId(rs.getInt("album_id"));
+        album.setTitulo(rs.getString("titulo_album"));
+
+        int anio = rs.getInt("anio");
+        if (!rs.wasNull()) {
+            album.setAnio(anio);
+        }
+
+        album.setArtista(artista);
+        album.setGenero(genero);
+
+        Cancion cancion = new Cancion();
+        cancion.setId(rs.getInt("cancion_id"));
+        cancion.setTitulo(rs.getString("titulo_cancion"));
+        cancion.setDuracionSegundos(rs.getInt("duracion_segundos"));
+
+        int numeroPista = rs.getInt("numero_pista");
+        if (!rs.wasNull()) {
+            cancion.setNumeroPista(numeroPista);
+        }
+        cancion.setAlbum(album);
+
+        return cancion;
+    }
+
     @Override
     public List<Cancion> listarCanciones() {
-        // TODO: consulta que combine canciones + álbumes + artistas + géneros
-        // (con JOIN en el SQL, o con varias consultas encadenadas).
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3, ejercicio 3)");
+        String sql = "SELECT " +
+                "c.id AS cancion_id, c.titulo AS titulo_cancion, c.duracion_segundos, c.numero_pista, " +
+                "al.id AS album_id, al.titulo AS titulo_album, al.anio, " +
+                "ar.id AS artista_id, ar.nombre AS nombre_artista, ar.nacionalidad, " +
+                "g.id AS genero_id, g.nombre AS nombre_genero " +
+                "FROM canciones c " +
+                "JOIN albumes al ON c.album_id = al.id " +
+                "JOIN artistas ar ON al.artista_id = ar.id " +
+                "JOIN generos g ON al.genero_id = g.id " +
+                "ORDER BY ar.nombre, al.anio, c.numero_pista";
+
+        List<Cancion> lista = new ArrayList<>();
+        try (Connection conexion = ConexionBD.obtenerConexion();
+             PreparedStatement ps = conexion.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                lista.add(mapearCancion(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al listar canciones", e);
+        }
+        return lista;
     }
 
     /**
@@ -72,9 +130,39 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
      * álbum, artista, género y año), tal como pide el ejercicio 3.
      */
     public List<CancionCompleta> listarCancionesCompletas() {
-        // TODO: implementar con una consulta JOIN (o varias consultas encadenadas),
-        // construyendo un CancionCompleta por cada fila del resultado.
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3, ejercicio 3)");
+        String sql = "SELECT " +
+                "c.titulo AS titulo_cancion, " +
+                "al.titulo AS titulo_album, al.anio, " +
+                "ar.nombre AS nombre_artista, " +
+                "g.nombre AS nombre_genero " +
+                "FROM canciones c " +
+                "JOIN albumes al ON c.album_id = al.id " +
+                "JOIN artistas ar ON al.artista_id = ar.id " +
+                "JOIN generos g ON al.genero_id = g.id " +
+                "ORDER BY ar.nombre, al.anio, c.numero_pista";
+
+        List<CancionCompleta> lista = new ArrayList<>();
+        try (Connection conexion = ConexionBD.obtenerConexion();
+             PreparedStatement ps = conexion.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                String tituloCancion = rs.getString("titulo_cancion");
+                String tituloAlbum = rs.getString("titulo_album");
+                String nombreArtista = rs.getString("nombre_artista");
+                String nombreGenero = rs.getString("nombre_genero");
+                int anio = rs.getInt("anio");
+
+                if (rs.wasNull()) {
+                    anio = 0;
+                }
+
+                lista.add(new CancionCompleta(tituloCancion, tituloAlbum, nombreArtista, nombreGenero, anio));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al listar CancionCompleta", e);
+        }
+        return lista;
     }
 
     // ---------- Ejercicio 4: búsqueda parametrizada ----------
@@ -121,22 +209,84 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
 
     @Override
     public List<Genero> listarGeneros() {
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3)");
+        String sql = "SELECT id, nombre FROM generos ORDER BY nombre";
+        List<Genero> lista = new ArrayList<>();
+        try (Connection conexion = ConexionBD.obtenerConexion();
+             PreparedStatement ps = conexion.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                lista.add(new Genero(rs.getInt("id"), rs.getString("nombre")));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al listar generos", e);
+        }
+        return lista;
     }
 
     @Override
     public List<Artista> listarArtistas() {
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3)");
+        String sql = "SELECT id, nombre, nacionalidad FROM artistas ORDER BY nombre";
+        List<Artista> lista = new ArrayList<>();
+        try (Connection conexion = ConexionBD.obtenerConexion();
+             PreparedStatement ps = conexion.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                lista.add(new Artista(rs.getInt("id"), rs.getString("nombre"), rs.getString("nacionalidad")));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al listar artistas", e);
+        }
+        return lista;
     }
 
     @Override
     public List<Album> listarAlbumes() {
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3)");
+        String sql = "SELECT al.id AS album_id, al.titulo, al.anio, " +
+                "ar.id AS artista_id, ar.nombre AS nombre_artista, ar.nacionalidad, " +
+                "g.id AS genero_id, g.nombre AS nombre_genero " +
+                "FROM albumes al " +
+                "JOIN artistas ar ON al.artista_id = ar.id " +
+                "JOIN generos g ON al.genero_id = g.id " +
+                "ORDER BY al.titulo";
+        List<Album> lista = new ArrayList<>();
+        try (Connection conexion = ConexionBD.obtenerConexion();
+             PreparedStatement ps = conexion.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Genero g = new Genero(rs.getInt("genero_id"), rs.getString("nombre_genero"));
+                Artista a = new Artista(rs.getInt("artista_id"), rs.getString("nombre_artista"), rs.getString("nacionalidad"));
+                Album album = new Album(rs.getString("titulo"), 0, a, g);
+                album.setId(rs.getInt("album_id"));
+
+                int anio = rs.getInt("anio");
+                if (!rs.wasNull()) {
+                    album.setAnio(anio);
+                }
+
+                lista.add(album);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al listar albumes", e);
+        }
+        return lista;
     }
 
     @Override
     public List<ListaReproduccion> listarListas() {
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3)");
+        String sql = "SELECT id, nombre FROM listas_reproduccion ORDER BY nombre";
+        List<ListaReproduccion> lista = new ArrayList<>();
+        try (Connection conexion = ConexionBD.obtenerConexion();
+             PreparedStatement ps = conexion.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                ListaReproduccion lr = new ListaReproduccion(rs.getString("nombre"));
+                lr.setId(rs.getInt("id"));
+                lista.add(lr);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al listar listas de reproduccion", e);
+        }
+        return lista;
     }
 
     @Override
