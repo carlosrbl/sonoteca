@@ -169,8 +169,40 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
 
     @Override
     public List<Cancion> buscarCanciones(String texto) {
-        // TODO: PreparedStatement con LIKE sobre título/artista/álbum.
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3, ejercicio 4)");
+        if (texto == null || texto.trim().isEmpty()) {
+            return listarCanciones();
+        }
+
+        String sql = "SELECT " +
+                "c.id AS cancion_id, c.titulo AS titulo_cancion, c.duracion_segundos, c.numero_pista, " +
+                "al.id AS album_id, al.titulo AS titulo_album, al.anio, " +
+                "ar.id AS artista_id, ar.nombre AS nombre_artista, ar.nacionalidad, " +
+                "g.id AS genero_id, g.nombre AS nombre_genero " +
+                "FROM canciones c " +
+                "JOIN albumes al ON c.album_id = al.id " +
+                "JOIN artistas ar ON al.artista_id = ar.id " +
+                "JOIN generos g ON al.genero_id = g.id " +
+                "WHERE c.titulo ILIKE ? OR al.titulo ILIKE ? OR ar.nombre ILIKE ? " +
+                "ORDER BY ar.nombre, al.anio, c.numero_pista";
+
+        List<Cancion> lista = new ArrayList<>();
+        try (Connection conexion = ConexionBD.obtenerConexion();
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            String parametro = "%" + texto.trim() + "%";
+            ps.setString(1, parametro);
+            ps.setString(2, parametro);
+            ps.setString(3, parametro);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapearCancion(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al buscar canciones", e);
+        }
+        return lista;
     }
 
     // ---------- Ejercicio 5: actualizar / eliminar ----------
@@ -241,7 +273,7 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
 
     @Override
     public List<Album> listarAlbumes() {
-        String sql = "SELECT al.id AS album_id, al.titulo, al.anio, " +
+        String sql = "SELECT al.id AS album_id, al.titulo AS titulo_album, al.anio, " +
                 "ar.id AS artista_id, ar.nombre AS nombre_artista, ar.nacionalidad, " +
                 "g.id AS genero_id, g.nombre AS nombre_genero " +
                 "FROM albumes al " +
@@ -255,13 +287,18 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
             while (rs.next()) {
                 Genero g = new Genero(rs.getInt("genero_id"), rs.getString("nombre_genero"));
                 Artista a = new Artista(rs.getInt("artista_id"), rs.getString("nombre_artista"), rs.getString("nacionalidad"));
-                Album album = new Album(rs.getString("titulo"), 0, a, g);
+
+                Album album = new Album();
                 album.setId(rs.getInt("album_id"));
+                album.setTitulo(rs.getString("titulo_album"));
 
                 int anio = rs.getInt("anio");
                 if (!rs.wasNull()) {
                     album.setAnio(anio);
                 }
+
+                album.setArtista(a);
+                album.setGenero(g);
 
                 lista.add(album);
             }
