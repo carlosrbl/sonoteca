@@ -1,31 +1,29 @@
-# SonoTeca
+# SonoTeca - Gestor de Biblioteca Musical
 
-Aplicación de escritorio para gestionar una biblioteca musical (géneros, artistas, álbumes, canciones y listas de reproducción), usada como proyecto base en el módulo de Acceso a Datos (2º DAM).
+Proyecto de la asignatura de **Acceso a Datos** (2º DAM).
+Esta aplicación de escritorio en Java (Swing) permite gestionar una biblioteca musical completa, incluyendo géneros, artistas, álbumes, canciones y listas de reproducción.
 
-## Cómo está organizado el proyecto
+## 👨‍💻 Desarrollador
+**CARLOS RODRIGO BELTRÁ** - Alumno de 2º DAM.
 
-- **`modelo`** — Las clases del dominio (`Genero`, `Artista`, `Album`, `Cancion`, `ListaReproduccion`, `Biblioteca`). Se usan en todas las unidades; en la unidad 4 se les añaden anotaciones JPA.
-- **`front`** — La interfaz gráfica (Swing), **ya completa**. No hace falta tocar nada de este paquete.
-- **`repositorio`** — Contiene la interfaz `RepositorioSonoTeca` (el contrato que usa el front) y una implementación por unidad:
-  - `repositorio.memoria.RepositorioMemoria` — completa, con datos de ejemplo, para poder ejecutar la aplicación desde el primer día.
-  - `repositorio.ficheros` — **Unidad 2**.
-  - `repositorio.jdbc` — **Unidad 3**.
-  - `repositorio.hibernate` — **Unidad 4**.
-  - `repositorio.mongo` — **Unidad 6**.
-- **`util`** — `Duracion` (unidad 1) y `JsonUtils` (unidades 1 y 2).
+## 🚀 Tecnologías y Estado de Persistencia
 
-La **unidad 5** (Spring) es un proyecto aparte: `sonoteca-api` (junto a este).
+El proyecto implementa distintos enfoques de persistencia de datos según las unidades del módulo:
 
-## Cómo ejecutar la aplicación
+* **Unidad 1 (JSON):** Implementada serialización y adaptadores personalizados (Gson) para tipos como `LocalDate`.
+* **Unidad 2 (Ficheros):** Implementada persistencia en ficheros binarios, lectura de cabeceras ID3v1 de MP3 y sincronización en tiempo real tras modificaciones en memoria.
+* **Unidad 3 (JDBC):** Integración activa con base de datos **PostgreSQL** para alta en cascada y operaciones CRUD.
+
+## 📁 Estructura del Proyecto
+
+- **`modelo`** — Clases del dominio (`Genero`, `Artista`, `Album`, `Cancion`, `ListaReproduccion`, `Biblioteca`).
+- **`front`** — Interfaz gráfica basada en Java Swing.
+- **`repositorio`** — Implementaciones de la interfaz `RepositorioSonoTeca` para los distintos orígenes de datos (Memoria, Ficheros binarios, JDBC, etc.).
+- **`util`** — Adaptadores y utilidades de conversión.
+
+## ⚙️ Cómo ejecutar la aplicación
+
+Para compilar y lanzar el proyecto desde la terminal usando Maven:
 
 ```bash
 mvn compile exec:java -Dexec.mainClass=es.iesejemplo.sonoteca.Main
-```
-
-o, desde el IDE, ejecuta directamente la clase `es.iesejemplo.sonoteca.Main`.
-
-Por defecto se usa `RepositorioMemoria`, así que la aplicación funciona sin ninguna configuración adicional. A medida que completes cada unidad, cambia la línea señalada en `Main.java` por tu propia implementación.
-
-## Cómo saber qué tengo que hacer en cada unidad
-
-Busca `TODO: implementar (unidad N...)` en el código: cada uno indica qué método tienes que completar y en qué ejercicio de la práctica corresponde. Si ejecutas la aplicación y pulsas un botón cuya funcionalidad depende de un método sin implementar, verás un aviso claro en pantalla (no un error críptico) indicando que esa parte todavía no está hecha.

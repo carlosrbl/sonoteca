@@ -13,6 +13,9 @@ import java.io.ObjectOutputStream;
 import java.io.ObjectInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedInputStream;
+import java.io.RandomAccessFile;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 
 /**
  * UNIDAD 2 — Persistencia en ficheros.
@@ -87,16 +90,16 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
     private static final int TAM_CABECERA = 128;
 
     public Cancion leerCabeceraID3(File ficheroMp3) {
-        java.nio.file.Path ruta = ficheroMp3.toPath();
+        Path ruta = ficheroMp3.toPath();
 
         try {
-            if (java.nio.file.Files.size(ruta) < TAM_CABECERA) {
+            if (Files.size(ruta) < TAM_CABECERA) {
                 return null;
             }
 
             byte[] bloque = new byte[TAM_CABECERA];
 
-            try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(ficheroMp3, "r")) {
+            try (RandomAccessFile raf = new RandomAccessFile(ficheroMp3, "r")) {
                 raf.seek(raf.length() - TAM_CABECERA);
                 raf.readFully(bloque);
             }
@@ -131,7 +134,7 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
 
             return cancion;
 
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             System.err.println("Error leyendo ID3v1 de " + ficheroMp3.getName() + ": " + e.getMessage());
             return null;
         }
@@ -140,34 +143,34 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
     // ---------- Ejercicio 3: serializar/deserializar la biblioteca ----------
 
     public void guardarBiblioteca(Biblioteca biblioteca, String rutaFichero) {
-        java.nio.file.Path ruta = java.nio.file.Path.of(rutaFichero).toAbsolutePath();
+        Path ruta = Path.of(rutaFichero).toAbsolutePath();
         System.out.println("Guardando biblioteca en: " + ruta);
 
         try {
-            if (ruta.getParent() != null && java.nio.file.Files.notExists(ruta.getParent())) {
-                java.nio.file.Files.createDirectories(ruta.getParent());
+            if (ruta.getParent() != null && Files.notExists(ruta.getParent())) {
+                Files.createDirectories(ruta.getParent());
             }
 
             try (ObjectOutputStream salida = new ObjectOutputStream(
-                    new BufferedOutputStream(java.nio.file.Files.newOutputStream(ruta)))) {
+                    new BufferedOutputStream(Files.newOutputStream(ruta)))) {
                 salida.writeObject(biblioteca);
             }
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException("Error al guardar la biblioteca en " + ruta, e);
         }
     }
 
     public Biblioteca cargarBiblioteca(String rutaFichero) {
-        java.nio.file.Path ruta = java.nio.file.Path.of(rutaFichero).toAbsolutePath();
+        Path ruta = Path.of(rutaFichero).toAbsolutePath();
 
-        if (java.nio.file.Files.notExists(ruta)) {
+        if (Files.notExists(ruta)) {
             return new Biblioteca();
         }
 
         try (ObjectInputStream entrada = new ObjectInputStream(
-                new BufferedInputStream(java.nio.file.Files.newInputStream(ruta)))) {
+                new BufferedInputStream(Files.newInputStream(ruta)))) {
             return (Biblioteca) entrada.readObject();
-        } catch (ClassNotFoundException | java.io.IOException e) {
+        } catch (ClassNotFoundException | IOException e) {
             System.err.println("Error al cargar la biblioteca: " + e.getMessage());
             return new Biblioteca();
         }
@@ -228,6 +231,7 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
         }
 
         biblioteca.getCanciones().add(cancion);
+        guardarBiblioteca(biblioteca, rutaFicheroBiblioteca);
     }
 
     @Override
@@ -235,6 +239,7 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
         for (int i = 0; i < biblioteca.getCanciones().size(); i++) {
             if (biblioteca.getCanciones().get(i).getId() == cancion.getId()) {
                 biblioteca.getCanciones().set(i, cancion);
+                guardarBiblioteca(biblioteca, rutaFicheroBiblioteca);
                 break;
             }
         }
@@ -243,6 +248,7 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
     @Override
     public void eliminarCancion(int idCancion) {
         biblioteca.getCanciones().removeIf(c -> c.getId() == idCancion);
+        guardarBiblioteca(biblioteca, rutaFicheroBiblioteca);
     }
 
     @Override
@@ -255,6 +261,7 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
         int nuevoId = biblioteca.getListasReproduccion().stream().mapToInt(ListaReproduccion::getId).max().orElse(0) + 1;
         lista.setId(nuevoId);
         biblioteca.getListasReproduccion().add(lista);
+        guardarBiblioteca(biblioteca, rutaFicheroBiblioteca);
     }
 
     @Override
@@ -271,6 +278,7 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
             } else {
                 lista.getCanciones().add(cancion);
             }
+            guardarBiblioteca(biblioteca, rutaFicheroBiblioteca);
         }
     }
 
@@ -281,7 +289,7 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
         if (lista != null) {
             return lista.getCanciones();
         }
-        return new java.util.ArrayList<>();
+        return new ArrayList<>();
     }
 
     private Genero obtenerCrearGenero(String nombre) {
@@ -326,7 +334,7 @@ public class RepositorioFicheros implements RepositorioSonoTeca {
 
     /** Extrae un campo de texto ID3v1: ISO-8859-1, recortando espacios y bytes nulos. */
     private static String campo(byte[] bloque, int desde, int longitud) {
-        String texto = new String(bloque, desde, longitud, java.nio.charset.StandardCharsets.ISO_8859_1);
+        String texto = new String(bloque, desde, longitud, StandardCharsets.ISO_8859_1);
         int nulo = texto.indexOf('\0');
         if (nulo != -1) {
             texto = texto.substring(0, nulo);
