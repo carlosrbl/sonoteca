@@ -209,12 +209,45 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
 
     @Override
     public void actualizarCancion(Cancion cancion) {
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3, ejercicio 5)");
+        String sql = "UPDATE canciones SET titulo = ?, duracion_segundos = ?, numero_pista = ? WHERE id = ?";
+        try (Connection conexion = ConexionBD.obtenerConexion();
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            ps.setString(1, cancion.getTitulo());
+            ps.setInt(2, cancion.getDuracionSegundos());
+
+            if (cancion.getNumeroPista() > 0) {
+                ps.setInt(3, cancion.getNumeroPista());
+            } else {
+                ps.setNull(3, Types.INTEGER);
+            }
+
+            ps.setInt(4, cancion.getId());
+
+            int filasAfectadas = ps.executeUpdate();
+            if (filasAfectadas == 0) {
+                throw new RuntimeException("No se ha actualizado ninguna canción. El id " + cancion.getId() + " no existe");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al actualizar la canción " + cancion.getId(), e);
+        }
     }
 
     @Override
     public void eliminarCancion(int idCancion) {
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3, ejercicio 5)");
+        String sql = "DELETE FROM canciones WHERE id = ?";
+        try (Connection conexion = ConexionBD.obtenerConexion();
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            ps.setInt(1, idCancion);
+
+            int filasAfectadas = ps.executeUpdate();
+            if (filasAfectadas == 0) {
+                throw new RuntimeException("No se ha eliminado ninguna canción. El id " + idCancion + " no existe");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al eliminar la canción " + idCancion, e);
+        }
     }
 
     /**
@@ -223,7 +256,22 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
      * un mensaje claro en lugar de dejar que se propague la excepción SQL en crudo.
      */
     public void eliminarAlbum(int idAlbum) {
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3, ejercicio 5)");
+        String sql = "DELETE FROM albumes WHERE id = ?";
+        try (Connection conexion = ConexionBD.obtenerConexion();
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            ps.setInt(1, idAlbum);
+
+            int filasAfectadas = ps.executeUpdate();
+            if (filasAfectadas == 0) {
+                throw new RuntimeException("No se ha eliminado ningún álbum. El id " + idAlbum + " no existe");
+            }
+        } catch (SQLException e) {
+            if ("23503".equals(e.getSQLState())) {
+                throw new RuntimeException("No se puede eliminar el álbum porque todavía tiene canciones asociadas", e);
+            }
+            throw new RuntimeException("Error al eliminar el álbum " + idAlbum, e);
+        }
     }
 
     // ---------- Ejercicio 6: importación masiva con transacción ----------
@@ -381,7 +429,7 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
             if (nacionalidad != null && !nacionalidad.isEmpty()) {
                 ps.setString(2, nacionalidad);
             } else {
-                ps.setNull(2, java.sql.Types.VARCHAR);
+                ps.setNull(2, Types.VARCHAR);
             }
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
@@ -409,7 +457,7 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
             if (album.getAnio() > 0) {
                 ps.setInt(2, album.getAnio());
             } else {
-                ps.setNull(2, java.sql.Types.INTEGER);
+                ps.setNull(2, Types.INTEGER);
             }
             ps.setInt(3, artistaId);
             ps.setInt(4, generoId);
