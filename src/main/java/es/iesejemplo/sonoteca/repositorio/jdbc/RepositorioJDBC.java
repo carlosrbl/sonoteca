@@ -2,13 +2,11 @@ package es.iesejemplo.sonoteca.repositorio.jdbc;
 
 import es.iesejemplo.sonoteca.modelo.*;
 import es.iesejemplo.sonoteca.repositorio.RepositorioSonoTeca;
+import es.iesejemplo.sonoteca.util.JsonUtils;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.io.IOException;
+import java.sql.*;
 import java.util.List;
-import java.sql.Types;
 import java.util.ArrayList;
 
 /**
@@ -282,7 +280,118 @@ public class RepositorioJDBC implements RepositorioSonoTeca {
      * falla, deshaz toda la importación con rollback().
      */
     public void importarDesdeJson(String rutaFichero) {
-        throw new UnsupportedOperationException("TODO: implementar (unidad 3, ejercicio 6)");
+        Biblioteca biblioteca = JsonUtils.importarBibliotecaJson(rutaFichero);
+
+        try (Connection conexion = ConexionBD.obtenerConexion()) {
+            conexion.setAutoCommit(false);
+            try {
+                vaciarTablas(conexion);
+
+                insertarGenerosBatch(conexion, biblioteca.getGeneros());
+                insertarArtistasBatch(conexion, biblioteca.getArtistas());
+                insertarAlbumesBatch(conexion, biblioteca.getAlbumes());
+                insertarCancionesBatch(conexion, biblioteca.getCanciones());
+
+                actualizarSecuenciasPostgres(conexion);
+
+                conexion.commit();
+            } catch (SQLException e) {
+                conexion.rollback();
+                throw new RuntimeException("Error durante la importación masiva. Transacción cancelada (rollback)", e);
+            } finally {
+                conexion.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error de conexión al importar desde JSON", e);
+        }
+    }
+
+    private void vaciarTablas(Connection conexion) throws SQLException {
+        String sql = "DELETE FROM canciones; DELETE FROM albumes; DELETE FROM artistas; DELETE FROM generos;";
+        try (Statement st = conexion.createStatement()) {
+            st.executeUpdate(sql);
+        }
+    }
+
+    private void insertarGenerosBatch(Connection conexion, List<Genero> generos) throws SQLException {
+        if (generos == null || generos.isEmpty()) return;
+        String sql = "INSERT INTO generos (id, nombre) VALUES (?, ?)";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            for (Genero g : generos) {
+                ps.setInt(1, g.getId());
+                ps.setString(2, g.getNombre());
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+    }
+
+    private void insertarArtistasBatch(Connection conexion, List<Artista> artistas) throws SQLException {
+        if (artistas == null || artistas.isEmpty()) return;
+        String sql = "INSERT INTO artistas (id, nombre, nacionalidad) VALUES (?, ?, ?)";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            for (Artista a : artistas) {
+                ps.setInt(1, a.getId());
+                ps.setString(2, a.getNombre());
+                if (a.getNacionalidad() != null && !a.getNacionalidad().trim().isEmpty()) {
+                    ps.setString(3, a.getNacionalidad());
+                } else {
+                    ps.setNull(3, Types.VARCHAR);
+                }
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+    }
+
+    private void insertarAlbumesBatch(Connection conexion, List<Album> albumes) throws SQLException {
+        if (albumes == null || albumes.isEmpty()) return;
+        String sql = "INSERT INTO albumes (id, titulo, anio, artista_id, genero_id) VALUES (?, ?, ?, ?, ?)";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            for (Album al : albumes) {
+                ps.setInt(1, al.getId());
+                ps.setString(2, al.getTitulo());
+                if (al.getAnio() > 0) {
+                    ps.setInt(3, al.getAnio());
+                } else {
+                    ps.setNull(3, Types.INTEGER);
+                }
+                ps.setInt(4, al.getArtista().getId());
+                ps.setInt(5, al.getGenero().getId());
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+    }
+
+    private void insertarCancionesBatch(Connection conexion, List<Cancion> canciones) throws SQLException {
+        if (canciones == null || canciones.isEmpty()) return;
+        String sql = "INSERT INTO canciones (id, titulo, duracion_segundos, numero_pista, album_id) VALUES (?, ?, ?, ?, ?)";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            for (Cancion c : canciones) {
+                ps.setInt(1, c.getId());
+                ps.setString(2, c.getTitulo());
+                ps.setInt(3, c.getDuracionSegundos());
+                if (c.getNumeroPista() > 0) {
+                    ps.setInt(4, c.getNumeroPista());
+                } else {
+                    ps.setNull(4, Types.INTEGER);
+                }
+                ps.setInt(5, c.getAlbum().getId());
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+    }
+
+    private void actualizarSecuenciasPostgres(Connection conexion) throws SQLException {
+        String sql = "SELECT setval(pg_get_serial_sequence('generos', 'id'), COALESCE(MAX(id), 0) + 1, false) FROM generos; " +
+                "SELECT setval(pg_get_serial_sequence('artistas', 'id'), COALESCE(MAX(id), 0) + 1, false) FROM artistas; " +
+                "SELECT setval(pg_get_serial_sequence('albumes', 'id'), COALESCE(MAX(id), 0) + 1, false) FROM albumes; " +
+                "SELECT setval(pg_get_serial_sequence('canciones', 'id'), COALESCE(MAX(id), 0) + 1, false) FROM canciones;";
+        try (Statement st = conexion.createStatement()) {
+            st.execute(sql);
+        }
     }
 
     // ---------- Resto de la interfaz ----------
